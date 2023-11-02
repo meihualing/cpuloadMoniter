@@ -3,8 +3,6 @@ from curses import wrapper
 import time
 import os
 import threading
-from cpustat import get_current_cpuload
-
 
 def get_current_terminal_size():
     size = os.get_terminal_size()
@@ -22,7 +20,7 @@ def get_current_cpuload():
     previous_array_index = 0
     number_array = [[j for j in range(8)] for i in range(2)]
 
-    pad,curve_pad,command_pad = create_pads(1)
+    pad,curve_pad = create_pads(1)
     i = 0
     while True:
         if current_array_index == 0 and previous_array_index == 0:
@@ -46,7 +44,7 @@ def get_current_cpuload():
                 #print('current_cpuidle is {}, current_cpuall is {}'.format(current_cpuidle, current_cpuall))
                 current_cpuload = current_cpuidle/current_cpuall*100
                 i = i+1 
-                refresh_pads(pad,i,round(current_cpuload,2),curve_pad,command_pad)
+                refresh_pads(pad,i,round(current_cpuload,2),curve_pad)
                 #print(current_cpuload)
             else:
                 current_array_index = 1
@@ -56,13 +54,16 @@ def get_current_cpuload():
 
 
 def create_pads(i):
+    columns, lines = get_current_terminal_size()
+    
     summary_pad = curses.newpad(4, 10)
-    curve_pad = curses.newpad(10,30)
+    
+    curve_pad = curses.newpad(lines-2,columns-30)
     command_pad = curses.newpad(2,40) 
-    return summary_pad,curve_pad,command_pad
+    return summary_pad,curve_pad
 
 
-def refresh_pads(pad,i,cpuload,curve_pad,command_pad):
+def refresh_pads(pad,i,cpuload,curve_pad):
     columns, lines = get_current_terminal_size()
     #for y in range(0, 4):
     #    for x in range(0, 9):
@@ -76,18 +77,37 @@ def refresh_pads(pad,i,cpuload,curve_pad,command_pad):
     #          : filled with pad content.
     pad.addstr(0,0,"cpuload:")
     pad.addstr(1,0,str(cpuload))
-    pad.refresh(0,0, 4,columns-40, 8, columns-30)
+    pad.refresh(0, 0, 4, columns-30, 8, columns-20)
+    #print(str(cpuload))
     curve_pad.addch(0,10,ord('a') + i)
-    curve_pad.addstr(0,0,"curve_pad")
-    curve_pad.addstr(9,0,"curve_pad")
-    curve_pad.refresh(0,0,0,0,10,30)
-    command_pad.addch(0,12,ord('a') + i)
-    command_pad.addstr(0,0,"command_pad")
-    command_pad.addstr(1,0,"command_pad")
-    command_pad.refresh(0,0,lines-2,0,lines-1,40)
-
-    time.sleep(1)
+    up_board_string = '-' * (columns-31)
+    curve_pad.addstr(0,0,up_board_string)
+    curve_pad.addstr(lines-3,0,up_board_string)
+    for i in range(0,lines-3):
+        curve_pad.addch(i, columns-31, ord('|'))
+        
+    curve_pad.refresh(0,0,0,0,lines-3,columns-31)
     
+    #command_pad.addch(0,12,ord('a') + i)
+    #command_pad.addstr(0,0,"command_pad")
+    #command_pad.addstr(1,0,"command_pad")
+    #command_pad.refresh(0,0,lines-2,0,lines-1,40)
+    time.sleep(1)
+  
+  
+def create_command_pads(i):
+    columns, lines = get_current_terminal_size()
+    command_pad = curses.newpad(2,40) 
+    
+    command_pad.addstr(0,0,"input command:")
+    command_pad.refresh(0,0,lines-2,0,lines-1,40)
+    return command_pad 
+  
+def refresh_commands_pad(pad,commandchar):
+    columns, lines = get_current_terminal_size()
+    pad.addch(1,0,ord(commandchar) )
+    pad.refresh(0,0,lines-2,0,lines-1,40)
+    #time.sleep(1)    
      
 def main(stdscr):
     # Clear screen
@@ -110,21 +130,25 @@ def main(stdscr):
     thread_01.start() 
     
     #print ("we start the main thread")
+    command_pad = create_command_pads(0)
     time.sleep(3)
    
     #here is the main thread, we handling the keyboard input commands.
     while True:
         input_key = stdscr.getkey()
         if input_key == 'q':
-           print ("print now: ")
-           print (input_key)
+           #print ("print now: ")
+           #print (input_key)
+           refresh_commands_pad(command_pad,input_key) 
            time.sleep(1)
            break
         elif input_key == 't':
-           print ("still alive...")
+           #print ("still alive...")
+           refresh_commands_pad(command_pad,input_key) 
         else:
            #do nothing here, just update the CPUload print per second
-           print ("print q to quit")
+           #print ("print q to quit")
+           refresh_commands_pad(command_pad,input_key) 
 
 
 
